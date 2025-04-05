@@ -1,58 +1,81 @@
+from flask import Flask, request, jsonify, send_from_directory
 from transformers import AutoTokenizer, Gemma3ForCausalLM
 import torch
- 
-# Remplace par ta clé API Hugging Face (⚠️ Ne partage pas ta clé en public !)
+import os
+
+app = Flask(__name__, static_folder=".", static_url_path="")
+
+# Clé et modèle
 HUGGING_FACE_API_KEY = "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"
- 
-# Identifiant du modèle
 model_id = "google/gemma-3-1b-it"
- 
-# Chargement du modèle sans quantisation
+
+# Chargement du modèle et tokenizer
 model = Gemma3ForCausalLM.from_pretrained(
     model_id,
-    use_auth_token=HUGGING_FACE_API_KEY  # Utilisation de la clé API pour l'authentification
+    use_auth_token=HUGGING_FACE_API_KEY
 ).eval()
- 
-# Chargement du tokenizer
-tokenizer = AutoTokenizer.from_pretrained(model_id, use_auth_token=HUGGING_FACE_API_KEY)
- 
-# Message de l'utilisateur et contexte du chatbot
-messages = [
-    [
-        {
-            "role": "system",
-            "content": [{"type": "text", "text": "Vous êtes un assistant utile."},]
-        },
-        {
-            "role": "user",
-            "content": [{"type": "text", "text": "Écris un poème sur Hugging Face, l'entreprise."},]
-        },
-    ],
-]
- # Préparation des entrées pour le modèle
-inputs = tokenizer.apply_chat_template(
-    messages,
-    add_generation_prompt=True,
-    tokenize=True,
-    return_dict=True,
-    return_tensors="pt",
-).to(model.device).to(torch.bfloat16)
 
-# Génération du texte avec des paramètres personnalisés
-with torch.inference_mode():
-    outputs = model.generate(
-        **inputs,
-        max_new_tokens=100,  # Augmente la longueur du texte généré
-        temperature=0.1,  # Réponses plus naturelles et variées
-        top_p=0.9,  # Sélectionne les mots avec 90% de probabilité cumulée
-        top_k=50,  # Prend les 50 mots les plus probables
-        do_sample=True,  # Active l’échantillonnage aléatoire
-        repetition_penalty=1.2,  # Réduit les répétitions
-        length_penalty=1.0,  # Maintient la longueur standard
-        early_stopping=True  # Arrête la génération si une fin de phrase est atteinte
-    )
+tokenizer = AutoTokenizer.from_pretrained(
+    model_id,
+    use_auth_token=HUGGING_FACE_API_KEY
+)
 
-# Décodage et affichage du résultat
-outputs = tokenizer.batch_decode(outputs, skip_special_tokens=True, clean_up_tokenization_spaces=True)
+@app.route("/")
+def index():
+    # Définir le chemin absolu du dossier templates
+    template_folder = os.path.join(app.root_path, 'templates')
+    file_path = os.path.join(template_folder, 'index.html')
 
-print(outputs)
+    # Vérifier si le fichier index.html existe dans le dossier templates
+    if not os.path.exists(file_path):
+        print("❌ ERREUR : Le fichier index.html est introuvable dans le dossier templates.")
+        return "<h1>Erreur : fichier index.html non trouvé.</h1>", 404
+
+    print(f"➡️ Tentative d'envoi de : {file_path}")
+    # Envoyer le fichier index.html depuis le dossier templates
+    return send_from_directory(template_folder, "index.html")
+
+@app.route("/generate", methods=["POST"])
+def generate():
+    data = request.get_json()
+    user_input = data.get("text", "")
+
+    messages = [
+        [
+            {
+                "role": "system",
+                "content": [{"type": "text", "text": "Vous êtes un assistant utile."}]
+            },
+            {
+                "role": "user",
+                "content": [{"type": "text", "text": user_input}]
+            },
+        ]
+    ]
+
+    inputs = tokenizer.apply_chat_template(
+        messages,
+        add_generation_prompt=True,
+        tokenize=True,
+        return_dict=True,
+        return_tensors="pt"
+    ).to(model.device).to(torch.bfloat16)
+
+    with torch.inference_mode():
+        outputs = model.generate(
+            **inputs,
+            max_new_tokens=200,
+            temperature=0.7,
+            top_p=0.9,
+            top_k=50,
+            do_sample=True,
+            repetition_penalty=1.2,
+            length_penalty=1.0,
+            early_stopping=True
+        )
+
+    decoded_output = tokenizer.batch_decode(outputs, skip_special_tokens=True, clean_up_tokenization_spaces=True)
+    return jsonify({"reply": decoded_output[0]})
+
+if __name__ == "__main__":
+    app.run(debug=True)

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Gemma Chat</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #f3f3f3;
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+    }
+    textarea {
+      width: 100%;
+      height: 100px;
+      padding: 10px;
+      margin-top: 10px;
+      font-size: 1rem;
+    }
+    button {
+      margin-top: 15px;
+      padding: 10px 20px;
+      background-color: #0055ff;
+      color: white;
+      border: none;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    button:disabled {
+      background-color: #999;
+      cursor: wait;
+    }
+    button:hover:enabled {
+      background-color: #003bbd;
+    }
+    .response {
+      margin-top: 30px;
+      background: white;
+      padding: 15px;
+      border-radius: 5px;
+      box-shadow: 0px 0px 10px #ccc;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <h1>🧠 Chat avec Gemma</h1>
+  <textarea id="userInput" placeholder="Tapez votre message ici..."></textarea>
+  <button id="sendBtn" onclick="sendMessage()">Envoyer</button>
+
+  <div id="response" class="response"></div>
+
+  <script>
+    async function sendMessage() {
+      const userInput = document.getElementById("userInput").value;
+      const responseDiv = document.getElementById("response");
+      const button = document.getElementById("sendBtn");
+
+      if (!userInput.trim()) {
+        responseDiv.innerHTML = "⚠️ Veuillez entrer un message.";
+        return;
+      }
+
+      responseDiv.innerHTML = "⏳ Génération en cours...";
+      button.disabled = true;
+      button.innerText = "Attendez...";
+
+      try {
+        const res = await fetch("/generate", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ text: userInput })
+        });
+
+        const data = await res.json();
+        responseDiv.innerHTML = data.reply;
+      } catch (error) {
+        responseDiv.innerHTML = "❌ Une erreur est survenue lors de la génération.";
+        console.error(error);
+      }
+
+      button.disabled = false;
+      button.innerText = "Envoyer";
+    }
+  </script>
+</body>
+</html>

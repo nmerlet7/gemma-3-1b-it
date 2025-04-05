@@ -2,92 +2,147 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Gemma Chat</title>
+  <title>Assistant IA</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 20px;
-      background: #f3f3f3;
+    * {
+      box-sizing: border-box;
     }
-    h1 {
-      text-align: center;
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
       color: #333;
     }
-    textarea {
-      width: 100%;
-      height: 100px;
-      padding: 10px;
-      margin-top: 10px;
-      font-size: 1rem;
+
+    .chat-container {
+      background: white;
+      padding: 2rem;
+      border-radius: 1.5rem;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+      width: 90%;
+      max-width: 700px;
+      display: flex;
+      flex-direction: column;
     }
-    button {
-      margin-top: 15px;
-      padding: 10px 20px;
-      background-color: #0055ff;
+
+    h1 {
+      text-align: center;
+      margin-bottom: 1.5rem;
+      font-size: 1.8rem;
+      color: #4a4a4a;
+    }
+
+    .input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .input-wrapper input[type="text"] {
+      flex: 1;
+      padding: 1rem 1rem 1rem 3rem;
+      border: 2px solid #e0e0e0;
+      border-radius: 1rem;
+      font-size: 1rem;
+      transition: border-color 0.3s;
+    }
+
+    .input-wrapper input[type="text"]:focus {
+      border-color: #667eea;
+      outline: none;
+    }
+
+    .input-wrapper::before {
+      content: '💬';
+      position: absolute;
+      left: 1rem;
+      font-size: 1.2rem;
+      opacity: 0.6;
+    }
+
+    .generate-btn {
+      padding: 0.8rem 1.2rem;
+      font-size: 1rem;
+      background: #667eea;
       color: white;
       border: none;
-      font-size: 1rem;
+      border-radius: 1rem;
       cursor: pointer;
+      transition: background 0.3s;
     }
-    button:disabled {
-      background-color: #999;
-      cursor: wait;
+
+    .generate-btn:hover {
+      background: #5a67d8;
     }
-    button:hover:enabled {
-      background-color: #003bbd;
-    }
-    .response {
-      margin-top: 30px;
-      background: white;
-      padding: 15px;
-      border-radius: 5px;
-      box-shadow: 0px 0px 10px #ccc;
+
+    #response {
+      margin-top: 1.5rem;
+      background: #f4f4f8;
+      padding: 1rem;
+      border-radius: 1rem;
+      min-height: 100px;
+      font-size: 1rem;
+      line-height: 1.4;
       white-space: pre-wrap;
+      animation: fadeIn 0.4s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
     }
   </style>
 </head>
 <body>
-  <h1>🧠 Chat avec Gemma</h1>
-  <textarea id="userInput" placeholder="Tapez votre message ici..."></textarea>
-  <button id="sendBtn" onclick="sendMessage()">Envoyer</button>
-
-  <div id="response" class="response"></div>
+  <div class="chat-container">
+    <h1>🤖 Votre Assistant IA</h1>
+    <div class="input-wrapper">
+      <input type="text" id="userInput" placeholder="Posez votre question et appuyez sur Entrée..." />
+      <button class="generate-btn" id="generateBtn">Générer</button>
+    </div>
+    <div id="response">La réponse apparaîtra ici.</div>
+  </div>
 
   <script>
-    async function sendMessage() {
-      const userInput = document.getElementById("userInput").value;
-      const responseDiv = document.getElementById("response");
-      const button = document.getElementById("sendBtn");
+    const input = document.getElementById("userInput");
+    const responseDiv = document.getElementById("response");
+    const generateBtn = document.getElementById("generateBtn");
 
-      if (!userInput.trim()) {
-        responseDiv.innerHTML = "⚠️ Veuillez entrer un message.";
-        return;
-      }
+    function generateResponse() {
+      const text = input.value.trim();
+      if (!text) return;
 
-      responseDiv.innerHTML = "⏳ Génération en cours...";
-      button.disabled = true;
-      button.innerText = "Attendez...";
-
-      try {
-        const res = await fetch("/generate", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({ text: userInput })
+      responseDiv.textContent = "⏳ Génération en cours...";
+      fetch("/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text })
+      })
+        .then(res => res.json())
+        .then(data => {
+          responseDiv.textContent = data.reply;
+        })
+        .catch(err => {
+          console.error(err);
+          responseDiv.textContent = "❌ Erreur lors de la génération.";
         });
-
-        const data = await res.json();
-        responseDiv.innerHTML = data.reply;
-      } catch (error) {
-        responseDiv.innerHTML = "❌ Une erreur est survenue lors de la génération.";
-        console.error(error);
-      }
-
-      button.disabled = false;
-      button.innerText = "Envoyer";
     }
+
+    input.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") {
+        generateResponse();
+      }
+    });
+
+    generateBtn.addEventListener("click", generateResponse);
   </script>
 </body>
 </html>

@@ -80,6 +80,9 @@ def generate():
     match = re.search(r"assistant[\s:]*([\s\S]+)", raw_reply, re.IGNORECASE)
     clean_reply = match.group(1).strip() if match else raw_reply.strip()
 
+    # Nettoyage supplémentaire : retirer la partie "user" et "model"
+    clean_reply = re.sub(r"user\s*.*?model", "", clean_reply, flags=re.IGNORECASE).strip()
+
     return jsonify({"reply": clean_reply})
 
 if __name__ == "__main__":

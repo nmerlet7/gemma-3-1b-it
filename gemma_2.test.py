@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify, send_from_directory
 from transformers import AutoTokenizer, Gemma3ForCausalLM
 import torch
 import os
+import re  # 👈 Import pour le nettoyage
 
 app = Flask(__name__, static_folder=".", static_url_path="")
 
@@ -67,8 +68,19 @@ def generate():
             early_stopping=True
         )
 
-    decoded_output = tokenizer.batch_decode(outputs, skip_special_tokens=True, clean_up_tokenization_spaces=True)
-    return jsonify({"reply": decoded_output[0]})
+    decoded_output = tokenizer.batch_decode(
+        outputs,
+        skip_special_tokens=True,
+        clean_up_tokenization_spaces=True
+    )
+
+    raw_reply = decoded_output[0]
+
+    # Nettoyage : retirer tout ce qui précède la réponse de l'assistant
+    match = re.search(r"assistant[\s:]*([\s\S]+)", raw_reply, re.IGNORECASE)
+    clean_reply = match.group(1).strip() if match else raw_reply.strip()
+
+    return jsonify({"reply": clean_reply})
 
 if __name__ == "__main__":
     app.run(debug=True)

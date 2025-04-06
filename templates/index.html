@@ -44,6 +44,7 @@
       display: flex;
       align-items: center;
       gap: 1rem;
+      margin-bottom: 1rem;
     }
 
     .input-wrapper input[type="text"] {
@@ -79,25 +80,43 @@
       transition: background 0.3s;
     }
 
-    .generate-btn:hover {
+    .generate-btn:disabled {
+      background: #a3bffa;
+      cursor: not-allowed;
+    }
+
+    .generate-btn:hover:not(:disabled) {
       background: #5a67d8;
     }
 
-    #response {
-      margin-top: 1.5rem;
-      background: #f4f4f8;
-      padding: 1rem;
-      border-radius: 1rem;
-      min-height: 100px;
-      font-size: 1rem;
-      line-height: 1.4;
-      white-space: pre-wrap;
-      animation: fadeIn 0.4s ease-in-out;
+    .chat-history {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      max-height: 400px;
+      overflow-y: auto;
     }
 
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
+    .message {
+      padding: 1rem;
+      border-radius: 1rem;
+      line-height: 1.4;
+      white-space: pre-wrap;
+    }
+
+    .user-message {
+      align-self: flex-end;
+      background: #ebf4ff;
+    }
+
+    .bot-message {
+      align-self: flex-start;
+      background: #f4f4f8;
+    }
+
+    .typing {
+      font-style: italic;
+      opacity: 0.7;
     }
   </style>
 </head>
@@ -108,19 +127,39 @@
       <input type="text" id="userInput" placeholder="Posez votre question et appuyez sur Entrée..." />
       <button class="generate-btn" id="generateBtn">Générer</button>
     </div>
-    <div id="response">La réponse apparaîtra ici.</div>
+    <div class="chat-history" id="chatHistory"></div>
   </div>
 
   <script>
     const input = document.getElementById("userInput");
-    const responseDiv = document.getElementById("response");
+    const chatHistory = document.getElementById("chatHistory");
     const generateBtn = document.getElementById("generateBtn");
+
+    function addMessage(text, sender, isTyping = false) {
+      const messageEl = document.createElement("div");
+      messageEl.classList.add("message", sender === "user" ? "user-message" : "bot-message");
+      if (isTyping) {
+        messageEl.classList.add("typing");
+      }
+      messageEl.textContent = text;
+      chatHistory.appendChild(messageEl);
+      chatHistory.scrollTop = chatHistory.scrollHeight;
+      return messageEl;
+    }
 
     function generateResponse() {
       const text = input.value.trim();
       if (!text) return;
 
-      responseDiv.textContent = "⏳ Génération en cours...";
+      // Ajout du message utilisateur
+      addMessage(text, "user");
+      input.value = "";
+      input.disabled = true;
+      generateBtn.disabled = true;
+
+      // Message de chargement
+      const typingEl = addMessage("⏳ Assistant est en train de répondre...", "bot", true);
+
       fetch("/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -128,11 +167,18 @@
       })
         .then(res => res.json())
         .then(data => {
-          responseDiv.textContent = data.reply;
+          typingEl.remove(); // supprimer "en train de répondre"
+          addMessage(data.reply, "bot");
         })
         .catch(err => {
           console.error(err);
-          responseDiv.textContent = "❌ Erreur lors de la génération.";
+          typingEl.remove();
+          addMessage("❌ Erreur lors de la génération.", "bot");
+        })
+        .finally(() => {
+          input.disabled = false;
+          generateBtn.disabled = false;
+          input.focus();
         });
     }
 

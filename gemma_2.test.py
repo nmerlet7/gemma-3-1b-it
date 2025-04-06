@@ -22,17 +22,14 @@ tokenizer = AutoTokenizer.from_pretrained(
 
 @app.route("/")
 def index():
-    # Définir le chemin absolu du dossier templates
     template_folder = os.path.join(app.root_path, 'templates')
     file_path = os.path.join(template_folder, 'index.html')
 
-    # Vérifier si le fichier index.html existe dans le dossier templates
     if not os.path.exists(file_path):
         print("❌ ERREUR : Le fichier index.html est introuvable dans le dossier templates.")
         return "<h1>Erreur : fichier index.html non trouvé.</h1>", 404
 
     print(f"➡️ Tentative d'envoi de : {file_path}")
-    # Envoyer le fichier index.html depuis le dossier templates
     return send_from_directory(template_folder, "index.html")
 
 @app.route("/generate", methods=["POST"])
@@ -43,13 +40,9 @@ def generate():
     messages = [
         [
             {
-                "role": "system",
-                "content": [{"type": "text", "text": "Vous êtes un assistant utile."}]
-            },
-            {
                 "role": "user",
                 "content": [{"type": "text", "text": user_input}]
-            },
+            }
         ]
     ]
 
